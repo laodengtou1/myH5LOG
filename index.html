@@ -1835,36 +1835,18 @@
       }
     }
 
-    // 位置转盘（点击开始转 → 再点停下）
+    // 位置转盘（一键直接转到结果）
     function togglePositionSpin() {
       if(assignPhase !== 'position' || isPosSpinning) return;
-      if (!posFreeSpinning) {
-        // 开始自由旋转
-        posFreeSpinning = true;
-        posWheelSpin.style.transition = 'none';
-        function posLoop() {
-          posCurrentAngle += SPIN_SPEED_POS;
-          posWheelSpin.style.transform = `rotate(${posCurrentAngle}deg)`;
-          posAnimId = requestAnimationFrame(posLoop);
-        }
-        posLoop();
-        spinPosBtn.textContent = '🛑 停下来';
-        rerollPosBtn.disabled = true;
-      } else {
-        // 停下：取消rAF，计算目标，transition减速
-        cancelAnimationFrame(posAnimId);
-        posFreeSpinning = false;
-        const newRole = randomRoleForCurrent();
-        pendingPosRole = newRole;
-        const targetRot = calcTargetRotation(posCurrentAngle, 4, ROLE_LIST.indexOf(newRole), -90);
-        posWheelSpin.style.transition = 'transform 2.5s cubic-bezier(0.15, 0.85, 0.3, 1)';
-        posWheelSpin.style.transform = `rotate(${targetRot}deg)`;
-        posRotation = targetRot;
-        posCurrentAngle = targetRot;
-        isPosSpinning = true;
-        spinPosBtn.disabled = true; rerollPosBtn.disabled = true;
-        spinPosBtn.textContent = '🎰 随机位置';
-      }
+      const newRole = randomRoleForCurrent();
+      pendingPosRole = newRole;
+      const targetRot = calcTargetRotation(posCurrentAngle, 4, ROLE_LIST.indexOf(newRole), -90);
+      posWheelSpin.style.transition = 'transform 2.5s cubic-bezier(0.15, 0.85, 0.3, 1)';
+      posWheelSpin.style.transform = `rotate(${targetRot}deg)`;
+      posRotation = targetRot;
+      posCurrentAngle = targetRot;
+      isPosSpinning = true;
+      spinPosBtn.disabled = true; rerollPosBtn.disabled = true;
     }
 
     function commitPosition(role) {
