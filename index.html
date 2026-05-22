@@ -191,6 +191,51 @@
       width: 210px;
       height: 210px;
     }
+    .small-wheel-lg {
+      position: relative;
+      width: 360px;
+      height: 360px;
+    }
+    .hero-avatar-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .hero-avatar-img-item {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 80px;
+      height: 80px;
+      will-change: transform;
+    }
+    .hero-avatar-img-item img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      display: block;
+      background: #0a0a1c;
+      object-fit: cover;
+      box-sizing: border-box;
+    }
+    .hero-avatar-lbl-item {
+      position: absolute;
+      top: 0;
+      left: 0;
+      min-width: 60px;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+      text-shadow: 0 0 4px #000, 0 0 4px #000, 0 0 6px #000;
+      white-space: nowrap;
+      will-change: transform;
+      padding: 2px 4px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.35);
+    }
 
     .btn-group {
       display: flex;
@@ -259,6 +304,16 @@
     .player-name { font-weight: 800; font-size: 1rem; }
     .role-badge { font-size: 0.7rem; background: #00000060; display: inline-block; padding: 2px 12px; border-radius: 20px; margin: 4px 0; }
     .hero-name { font-size: 1.3rem; font-weight: 900; }
+    .hero-avatar {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #fff;
+      margin: 6px auto 4px;
+      display: block;
+      background: #0a0a1c;
+      box-shadow: 0 0 10px rgba(255,255,255,0.15);
+    }
     .msg-tip { color: #b0b0ff; font-size: 0.8rem; }
 
     .roster-panel {
@@ -837,6 +892,9 @@
         <button class="modal-close" id="closeShuffleBtn" title="关闭">✕</button>
       </div>
       <div class="shuffle-info" id="shuffleInfo"></div>
+      <div style="display:flex;gap:8px;margin:4px 0 8px;align-items:center;">
+        <button class="btn-shuffle-team" id="shuffleSelectAllBtn" style="padding:6px 14px;font-size:12px;">☑ 全选前10</button>
+      </div>
       <div class="roster-list" id="shufflePlayerList" style="max-height: 45vh;"></div>
       <div class="shuffle-actions">
         <button class="btn-shuffle-team" id="doShuffleBtn" disabled>🎲 开始分队</button>
@@ -859,7 +917,7 @@
       <div class="btn-group"><button class="btn btn-spin" id="spinPosBtn">🎰 随机位置</button><button class="btn btn-warning" id="rerollPosBtn">🔄 重选</button></div>
     </div>
     <div id="heroArea" class="wheel-area" style="display: none;">
-      <div class="small-wheel"><div class="small-pointer"></div><div class="small-wheel-spin" id="heroWheelSpin"><canvas id="heroCanvas" width="210" height="210"></canvas></div></div>
+      <div class="small-wheel-lg"><div class="small-pointer"></div><div class="small-wheel-spin" id="heroWheelSpin"><canvas id="heroCanvas" width="360" height="360"></canvas></div><div class="hero-avatar-overlay" id="heroAvatarOverlay"></div></div>
       <div class="btn-group"><button class="btn btn-spin" id="spinHeroBtn">🎯 随机英雄</button><button class="btn btn-warning" id="rerollHeroBtn">🔄 重抽</button><button class="btn btn-secondary" id="confirmHeroBtn" disabled>✅ 确认 / 下一步</button></div>
     </div>
     <div id="stepMessage" class="msg-tip">✨ 点击随机位置，指针会精准指向抽取的职责 ✨</div>
@@ -877,7 +935,7 @@
     // ---------- 无畏契约英雄库 ----------
     const HEROES = {
       duelist: ["捷风","不死鸟","芮娜","雷兹","夜露","霓虹","幻棱"],
-      initiator: ["猎枭","铁臂","斯凯","K/O","黑梦","盖可","钛狐"],
+      initiator: ["猎枭","铁臂","斯凯","KO","黑梦","盖可","钛狐"],
       controller: ["炼狱","蝰蛇","幽影","星礈","海神","暮蝶","迷核"],
       sentinel: ["贤者","零","奇乐","尚博勒","钢锁","维斯","禁灭"]
     };
@@ -1283,6 +1341,7 @@
     const shuffleCount = document.getElementById('shuffleCount');
     const doShuffleBtn = document.getElementById('doShuffleBtn');
     const shuffleResult = document.getElementById('shuffleResult');
+    const shuffleSelectAllBtn = document.getElementById('shuffleSelectAllBtn');
     let shuffleSelected = new Set(); // 当前勾选的玩家名
 
     function loadShuffleSelection() {
@@ -1352,6 +1411,17 @@
       } else {
         shuffleCount.style.color = '#e8a0f0';
       }
+      // 同步「全选前10」按钮状态
+      const limit = Math.min(10, roster.length);
+      if (limit === 0) {
+        shuffleSelectAllBtn.disabled = true;
+        shuffleSelectAllBtn.textContent = '☑ 全选前10';
+      } else {
+        shuffleSelectAllBtn.disabled = false;
+        const topNames = roster.slice(0, limit).map(p => p.name);
+        const isAllTopSelected = shuffleSelected.size === limit && topNames.every(n => shuffleSelected.has(n));
+        shuffleSelectAllBtn.textContent = isAllTopSelected ? '☐ 取消全选' : `☑ 全选前${limit}`;
+      }
     }
 
     function doShuffle() {
@@ -1417,6 +1487,21 @@
       if (e.key === 'Escape' && shuffleModal.classList.contains('active')) closeShuffleModal();
     });
     doShuffleBtn.addEventListener('click', doShuffle);
+
+    // 全选前10 / 取消全选 切换
+    shuffleSelectAllBtn.addEventListener('click', () => {
+      const limit = Math.min(10, roster.length);
+      if (limit === 0) return;
+      const topNames = roster.slice(0, limit).map(p => p.name);
+      const isAllTopSelected = shuffleSelected.size === limit && topNames.every(n => shuffleSelected.has(n));
+      if (isAllTopSelected) {
+        shuffleSelected.clear();
+      } else {
+        shuffleSelected = new Set(topNames); // 覆盖当前勾选
+      }
+      saveShuffleSelection();
+      renderShuffleList();
+    });
 
     // 点击名字改名
     function startRename(idx) {
@@ -1529,7 +1614,7 @@
           if (!assigned) {
             div.innerHTML = `<div class="player-name">${escapeHtml(p.name)}</div><div class="role-badge">⚡ 待分配</div><div class="hero-name">???</div>`;
           } else {
-            div.innerHTML = `<div class="player-name">${escapeHtml(p.name)}</div><div class="role-badge">${ROLE_CN[p.role]}</div><div class="hero-name">${escapeHtml(p.hero)}</div>`;
+            div.innerHTML = `<div class="player-name">${escapeHtml(p.name)}</div><div class="role-badge">${ROLE_CN[p.role]}</div><img class="hero-avatar" src="heroes/${encodeURIComponent(p.hero)}.png" alt="${escapeHtml(p.hero)}" onerror="this.style.display='none'"><div class="hero-name">${escapeHtml(p.hero)}</div>`;
             // 快速模式下显示重抽按钮
             if (quickModeActive) {
               const btn = document.createElement('button');
@@ -1652,39 +1737,138 @@
     }
     drawPositionWheel();
 
-    function drawHeroWheel(roleKey) {
-      const heroes = HEROES[roleKey] || [];
-      const w=210,h=210,cx=w/2,cy=h/2,r=w/2-4;
-      heroCtx.clearRect(0,0,w,h);
-      if(heroes.length===0) return;
-      const stepAngle = 2*Math.PI/heroes.length;
-      const colors = ['#FF5252','#FF8A80','#E57373','#FF6E6E','#FF4444','#D32F2F','#B71C1C','#F06292'];
-      for(let i=0;i<heroes.length;i++) {
-        const start = -Math.PI/2 + i*stepAngle; const end = start+stepAngle;
-        heroCtx.beginPath(); heroCtx.moveTo(cx,cy); heroCtx.arc(cx,cy,r,start,end); heroCtx.closePath();
-        heroCtx.fillStyle = colors[i%colors.length]; heroCtx.fill(); heroCtx.strokeStyle='#000'; heroCtx.lineWidth=1.5; heroCtx.stroke();
-        heroCtx.save(); const textR = r*0.62; const mid = start+stepAngle/2;
-        heroCtx.translate(cx+Math.cos(mid)*textR, cy+Math.sin(mid)*textR); heroCtx.rotate(mid+Math.PI/2);
-        heroCtx.font='bold 13px "PingFang SC"'; heroCtx.fillStyle='#fff'; heroCtx.shadowBlur=4; heroCtx.textAlign='center'; heroCtx.fillText(heroes[i],0,0);
-        heroCtx.restore();
+    // 英雄头像缓存（heroes/{名字}.png，加载失败降级为文字）
+    const heroImgCache = {};
+    let currentHeroRoleForRedraw = null;
+    const heroAvatarOverlay = document.getElementById('heroAvatarOverlay');
+    let avatarSyncId = null;
+
+    function getHeroImage(name) {
+      if (heroImgCache[name]) return heroImgCache[name];
+      const entry = { img: new Image(), loaded: false, failed: false };
+      entry.img.onload = () => { entry.loaded = true; if (currentHeroRoleForRedraw) drawHeroWheel(currentHeroRoleForRedraw); };
+      entry.img.onerror = () => { entry.failed = true; };
+      entry.img.src = `heroes/${encodeURIComponent(name)}.png`;
+      heroImgCache[name] = entry;
+      return entry;
+    }
+
+    // 读取 #heroWheelSpin 的当前实际旋转角（弧度）
+    function getHeroWheelRotationRad() {
+      const cs = getComputedStyle(heroWheelSpin);
+      const t = cs.transform;
+      if (!t || t === 'none') return 0;
+      const m = t.match(/matrix\(([^)]+)\)/);
+      if (!m) return 0;
+      const v = m[1].split(',').map(parseFloat);
+      return Math.atan2(v[1], v[0]);
+    }
+
+    // 同步头像位置（不旋转，始终朝上）
+    function syncHeroAvatars() {
+      const heroes = HEROES[currentHeroRoleForRedraw] || [];
+      if (heroes.length === 0) return;
+      const wheelRad = getHeroWheelRotationRad();
+      const cx = 180, cy = 180, r = 176;
+      const imgR = r * 0.56; // 头像中心距圆心
+      const lblR = r * 0.90; // 名字中心距圆心（更靠外，不会被头像遮住）
+      const stepAngle = 2 * Math.PI / heroes.length;
+      const imgItems = heroAvatarOverlay.querySelectorAll('.hero-avatar-img-item');
+      const lblItems = heroAvatarOverlay.querySelectorAll('.hero-avatar-lbl-item');
+      for (let i = 0; i < heroes.length; i++) {
+        const baseMid = -Math.PI/2 + i * stepAngle + stepAngle/2;
+        const mid = baseMid + wheelRad;
+        const ix = cx + Math.cos(mid) * imgR;
+        const iy = cy + Math.sin(mid) * imgR;
+        const lx = cx + Math.cos(mid) * lblR;
+        const ly = cy + Math.sin(mid) * lblR;
+        // 头像宽高 80，中心偏移 40
+        if (imgItems[i]) imgItems[i].style.transform = `translate(${ix - 40}px, ${iy - 40}px)`;
+        // 名字用 translate -50% 实现中心对齐
+        if (lblItems[i]) lblItems[i].style.transform = `translate(${lx}px, ${ly}px) translate(-50%, -50%)`;
       }
     }
 
-    function randomRole() { return ROLE_LIST[Math.floor(Math.random()*ROLE_LIST.length)]; }
-    function randomHeroByRole(role) { const pool=HEROES[role]; return pool[Math.floor(Math.random()*pool.length)]; }
+    function startAvatarSyncLoop() {
+      if (avatarSyncId) return;
+      function loop() {
+        syncHeroAvatars();
+        avatarSyncId = requestAnimationFrame(loop);
+      }
+      loop();
+    }
+    function stopAvatarSyncLoop() {
+      if (avatarSyncId) { cancelAnimationFrame(avatarSyncId); avatarSyncId = null; }
+    }
 
-    // 计算当前玩家可抽取的职责池，确保本队伍 5 人中 4 大职责各至少 1 人，同时排除禁位
+    function drawHeroWheel(roleKey) {
+      currentHeroRoleForRedraw = roleKey;
+      const heroes = HEROES[roleKey] || [];
+      const w=360,h=360,cx=w/2,cy=h/2,r=w/2-4;
+      heroCtx.clearRect(0,0,w,h);
+      heroAvatarOverlay.innerHTML = '';
+      if(heroes.length===0) return;
+      const stepAngle = 2*Math.PI/heroes.length;
+      const colors = ['#FF5252','#FF8A80','#E57373','#FF6E6E','#FF4444','#D32F2F','#B71C1C','#F06292'];
+      // 画扇区背景到 canvas（会跟随转盘 CSS 旋转）
+      for(let i=0;i<heroes.length;i++) {
+        const start = -Math.PI/2 + i*stepAngle; const end = start+stepAngle;
+        heroCtx.beginPath(); heroCtx.moveTo(cx,cy); heroCtx.arc(cx,cy,r,start,end); heroCtx.closePath();
+        heroCtx.fillStyle = colors[i%colors.length]; heroCtx.fill();
+        heroCtx.strokeStyle='#000'; heroCtx.lineWidth=1.5; heroCtx.stroke();
+      }
+      // 创建 overlay 头像项和名字项（不跟随旋转、始终朝上）
+      for(let i=0;i<heroes.length;i++) {
+        const entry = getHeroImage(heroes[i]);
+        const imgItem = document.createElement('div');
+        imgItem.className = 'hero-avatar-img-item';
+        if (entry.loaded) {
+          imgItem.innerHTML = `<img src="${entry.img.src}" alt="${escapeHtml(heroes[i])}">`;
+        } else {
+          // 未加载成功：用透明占位，名字仍会显示
+          imgItem.innerHTML = '';
+          imgItem.style.background = 'rgba(0,0,0,0.4)';
+          imgItem.style.borderRadius = '50%';
+          imgItem.style.border = '2px dashed rgba(255,255,255,0.4)';
+          imgItem.style.boxSizing = 'border-box';
+        }
+        heroAvatarOverlay.appendChild(imgItem);
+      }
+      // 名字项与头像项隔开两组 DOM，方便 querySelector 划分
+      for(let i=0;i<heroes.length;i++) {
+        const lblItem = document.createElement('div');
+        lblItem.className = 'hero-avatar-lbl-item';
+        lblItem.textContent = heroes[i];
+        heroAvatarOverlay.appendChild(lblItem);
+      }
+      syncHeroAvatars();
+      startAvatarSyncLoop();
+    }
+
+    function randomRole() { return ROLE_LIST[Math.floor(Math.random()*ROLE_LIST.length)]; }
+    // 本轮重抽排除池：同一玩家在本轮内点过重抽的英雄会被加进来，下一位玩家或 commit 后清空
+    let currentRoundExcluded = new Set();
+    function randomHeroByRole(role, excluded) {
+      const pool = HEROES[role] || [];
+      let candidates = pool;
+      if (excluded && excluded.size > 0) {
+        const filtered = pool.filter(h => !excluded.has(h));
+        if (filtered.length > 0) candidates = filtered; // 过滤后为空则保留原池兑底
+      }
+      return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+
+    // 计算当前玩家可抽取的职责池：
+    // - A 队（1～5）：本队 5 人中 4 大职责各至少 1 人，剩下 1 名额随机
+    // - B 队（6～10）：严格镜像 A 队的最终职责分布（例如 A 队 2 决斗+1 先锋+1 控场+1 哨位，B 队也必须 2-1-1-1）
+    // - 同时排除当前玩家的禁位
     function getRolePoolForCurrent() {
-      const teamStart = currentIndex < 5 ? 0 : 5;
+      const isTeamB = currentIndex >= 5;
+      const teamStart = isTeamB ? 5 : 0;
       const localIdx = currentIndex - teamStart;
       // 本队已分配玩家的职责集合
       const assignedRoles = players.slice(teamStart, teamStart + localIdx)
         .map(p => p.role).filter(Boolean);
-      const assignedSet = new Set(assignedRoles);
-      // 本队尚未覆盖的职责
-      const missingRoles = ROLE_LIST.filter(r => !assignedSet.has(r));
-      // 包含当前玩家在内的本队剩余人数
-      const remaining = 5 - localIdx;
 
       // 获取当前玩家的禁位
       const currentPlayerName = players[currentIndex] && players[currentIndex].name;
@@ -1692,9 +1876,31 @@
       const banned = rosterEntry ? rosterEntry.bannedRole : null;
 
       let pool;
-      // 剩余名额刚好足够填补缺失职责 → 必须从缺失职责中抽
-      if (missingRoles.length >= remaining) pool = missingRoles;
-      else pool = ROLE_LIST.slice();
+      if (isTeamB) {
+        // B 队：镜像 A 队职责分布
+        const aRoleCount = {};
+        ROLE_LIST.forEach(r => aRoleCount[r] = 0);
+        players.slice(0, 5).forEach(p => { if (p.role) aRoleCount[p.role]++; });
+        const bRoleCount = {};
+        ROLE_LIST.forEach(r => bRoleCount[r] = 0);
+        assignedRoles.forEach(r => bRoleCount[r]++);
+        // B 队该职责还有名额 = A 队该职责个数 - B 队已分配个数 > 0
+        pool = ROLE_LIST.filter(r => bRoleCount[r] < aRoleCount[r]);
+        // 兑底：若 A 队尚未完全定型（理论上不会出现）、则退回 4 大职责约束
+        if (pool.length === 0) {
+          const assignedSet = new Set(assignedRoles);
+          const missingRoles = ROLE_LIST.filter(r => !assignedSet.has(r));
+          const remaining = 5 - localIdx;
+          pool = missingRoles.length >= remaining ? missingRoles : ROLE_LIST.slice();
+        }
+      } else {
+        // A 队：原逻辑 - 4 大职责各至少 1 人
+        const assignedSet = new Set(assignedRoles);
+        const missingRoles = ROLE_LIST.filter(r => !assignedSet.has(r));
+        const remaining = 5 - localIdx;
+        if (missingRoles.length >= remaining) pool = missingRoles;
+        else pool = ROLE_LIST.slice();
+      }
 
       // 排除禁位
       if (banned) {
@@ -1725,50 +1931,62 @@
     }
 
     // ---------- 快速模式 ----------
-    // 给一支队伍随机分配职责，保证 4 大职责各至少 1 人，同时尊重禁位
-    function assignRolesForTeam(teamPlayers) {
-      // 获取每个玩家的禁位
+    // 给一支队伍随机分配职责：
+    // - 不传 targetDistribution：保证 4 大职责各至少 1 人（适用 A 队）
+    // - 传入 targetDistribution（{role: count}）：严格按该分布抽（适用 B 队镜像 A 队）
+    // 同时尊重禁位
+    function assignRolesForTeam(teamPlayers, targetDistribution) {
       const bans = teamPlayers.map(tp => {
         const re = roster.find(r => r.name === tp.name);
         return re ? re.bannedRole : null;
       });
 
-      const requiredRoles = ROLE_LIST.slice(); // 4 个必须覆盖的职责
-      const result = new Array(5).fill(null);
+      // 构造 5 个职责的多重集合（bag）
+      function buildRoleBag() {
+        if (targetDistribution) {
+          const bag = [];
+          ROLE_LIST.forEach(r => {
+            const c = targetDistribution[r] || 0;
+            for (let i = 0; i < c; i++) bag.push(r);
+          });
+          return bag;
+        } else {
+          // 默认：4 大职责各 1，第 5 个随机
+          const bag = ROLE_LIST.slice();
+          bag.push(ROLE_LIST[Math.floor(Math.random() * ROLE_LIST.length)]);
+          return bag;
+        }
+      }
 
-      // 策略：先处理有禁位的玩家，确保他们不会被分配到禁用的职责
-      // 尝试最多 50 次随机分配
+      const result = new Array(5).fill(null);
       let success = false;
-      for (let attempt = 0; attempt < 50; attempt++) {
-        // 洗牌必须职责
-        const shuffled = requiredRoles.slice();
-        for (let i = shuffled.length - 1; i > 0; i--) {
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const bag = buildRoleBag();
+        if (bag.length !== 5) break;
+        // 洗牌
+        for (let i = bag.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
-          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          [bag[i], bag[j]] = [bag[j], bag[i]];
         }
-        // 前4人分配必须职责，第5人随机
+        // 校验禁位
         let valid = true;
-        for (let i = 0; i < 4; i++) {
-          if (bans[i] && bans[i] === shuffled[i]) { valid = false; break; }
+        for (let i = 0; i < 5; i++) {
+          if (bans[i] && bans[i] === bag[i]) { valid = false; break; }
         }
-        const fifthRole = ROLE_LIST[Math.floor(Math.random() * ROLE_LIST.length)];
-        if (valid && bans[4] && bans[4] === fifthRole) valid = false;
         if (valid) {
-          for (let i = 0; i < 4; i++) result[i] = shuffled[i];
-          result[4] = fifthRole;
+          for (let i = 0; i < 5; i++) result[i] = bag[i];
           success = true;
           break;
         }
       }
       if (!success) {
         // 回退：忽略禁位直接分配
-        const shuffled = requiredRoles.slice();
-        for (let i = shuffled.length - 1; i > 0; i--) {
+        const bag = buildRoleBag();
+        for (let i = bag.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
-          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          [bag[i], bag[j]] = [bag[j], bag[i]];
         }
-        for (let i = 0; i < 4; i++) result[i] = shuffled[i];
-        result[4] = ROLE_LIST[Math.floor(Math.random() * ROLE_LIST.length)];
+        for (let i = 0; i < 5; i++) result[i] = bag[i];
         alert('部分玩家禁位冲突，无法完全满足，已忽略禁位分配');
       }
       for (let i = 0; i < 5; i++) teamPlayers[i].role = result[i];
@@ -1781,9 +1999,12 @@
       quickModeActive = true;
       assignPhase = 'finished';
       stepPanel.style.display = 'none';
-      // 分配职责
+      // 分配职责：A 队先抽，B 队镜像 A 队分布
       assignRolesForTeam(players.slice(0, 5));
-      assignRolesForTeam(players.slice(5, 10));
+      const aDist = {};
+      ROLE_LIST.forEach(r => aDist[r] = 0);
+      players.slice(0, 5).forEach(p => { if (p.role) aDist[p.role]++; });
+      assignRolesForTeam(players.slice(5, 10), aDist);
       // 分配英雄
       players.forEach(p => {
         p.hero = randomHeroByRole(p.role);
@@ -1874,6 +2095,10 @@
       if(!currentRole) return;
       if (!heroFreeSpinning) {
         // 开始自由旋转
+        // 如果上轮已抽到但用户点了重抽，把该英雄加入本轮排除池
+        if (pendingHeroName) {
+          currentRoundExcluded.add(pendingHeroName);
+        }
         heroFreeSpinning = true;
         heroWheelSpin.style.transition = 'none';
         let localAnimId = null;
@@ -1884,14 +2109,16 @@
           heroAnimId = localAnimId;
         }
         heroLoop();
+        spinHeroBtn.disabled = false; // 修复：重抽路径进来时该按钮可能还是 disabled
         spinHeroBtn.textContent = '🛑 停下来';
         rerollHeroBtn.disabled = true;
         confirmHeroBtn.disabled = true;
+        pendingHeroName = null;
       } else {
         // 停下：取消rAF，计算目标，transition减速
         cancelAnimationFrame(heroAnimId);
         heroFreeSpinning = false;
-        const newHero = randomHeroByRole(currentRole);
+        const newHero = randomHeroByRole(currentRole, currentRoundExcluded);
         pendingHeroName = newHero;
         const heroList = HEROES[currentRole];
         const targetIdx = heroList.indexOf(newHero);
@@ -1910,6 +2137,7 @@
     function commitHero(heroName) {
       if(assignPhase !== 'hero') return;
       players[currentIndex].hero = heroName;
+      currentRoundExcluded.clear(); // 本轮结束，清空重抽排除池
       updateFinalResults(); // 每分配完一个立即刷新
       currentIndex++;
       if(currentIndex < players.length) {
