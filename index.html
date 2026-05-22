@@ -1846,6 +1846,19 @@
     }
 
     function randomRole() { return ROLE_LIST[Math.floor(Math.random()*ROLE_LIST.length)]; }
+
+    // 获取同队其他玩家已分配的英雄集合（排除指定下标）
+    function getTeamUsedHeroes(playerIndex) {
+      const teamStart = playerIndex < 5 ? 0 : 5;
+      const used = new Set();
+      for (let i = teamStart; i < teamStart + 5; i++) {
+        if (i !== playerIndex && players[i] && players[i].hero) {
+          used.add(players[i].hero);
+        }
+      }
+      return used;
+    }
+
     // 本轮重抽排除池：同一玩家在本轮内点过重抽的英雄会被加进来，下一位玩家或 commit 后清空
     let currentRoundExcluded = new Set();
     function randomHeroByRole(role, excluded) {
@@ -2005,28 +2018,25 @@
       ROLE_LIST.forEach(r => aDist[r] = 0);
       players.slice(0, 5).forEach(p => { if (p.role) aDist[p.role]++; });
       assignRolesForTeam(players.slice(5, 10), aDist);
-      // 分配英雄
-      players.forEach(p => {
-        p.hero = randomHeroByRole(p.role);
-      });
+      // 分配英雄：同队不重复
+      for (let team = 0; team < 2; team++) {
+        const start = team * 5;
+        const teamUsed = new Set();
+        for (let i = start; i < start + 5; i++) {
+          players[i].hero = randomHeroByRole(players[i].role, teamUsed);
+          teamUsed.add(players[i].hero);
+        }
+      }
       updateFinalResults();
     }
 
-    // 快速模式下单人重抽英雄
+    // 快速模式下单人重抽英雄（排除同队已用 + 自己当前）
     function rerollQuickHero(playerIdx) {
       const p = players[playerIdx];
       if (!p || !p.role) return;
-      const pool = HEROES[p.role];
-      // 随机一个不同的英雄（如果只有1个就还是那个）
-      if (pool.length > 1) {
-        let newHero;
-        do {
-          newHero = pool[Math.floor(Math.random() * pool.length)];
-        } while (newHero === p.hero);
-        p.hero = newHero;
-      } else {
-        p.hero = pool[0];
-      }
+      const teamUsed = getTeamUsedHeroes(playerIdx);
+      teamUsed.add(p.hero); // 也排除自己当前英雄，确保抽到不同的
+      p.hero = randomHeroByRole(p.role, teamUsed);
       updateFinalResults();
     }
 
@@ -2118,7 +2128,10 @@
         // 停下：取消rAF，计算目标，transition减速
         cancelAnimationFrame(heroAnimId);
         heroFreeSpinning = false;
-        const newHero = randomHeroByRole(currentRole, currentRoundExcluded);
+        // 合并：同队已用英雄 + 本轮重抽排除池
+        const teamUsed = getTeamUsedHeroes(currentIndex);
+        const combinedExclude = new Set([...currentRoundExcluded, ...teamUsed]);
+        const newHero = randomHeroByRole(currentRole, combinedExclude);
         pendingHeroName = newHero;
         const heroList = HEROES[currentRole];
         const targetIdx = heroList.indexOf(newHero);
